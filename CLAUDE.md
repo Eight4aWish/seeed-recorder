@@ -43,9 +43,9 @@ Channel 16, Note 60:
 
 ## Hardware wiring (Seeed Xiao RP2040)
 
-**Button** (momentary tactile): leg 1 → GPIO `D0`, leg 2 → `GND`. Configure pin `INPUT_PULLUP`. No external resistor. Debounce ~20 ms in firmware.
+**Button** (momentary tactile): leg 1 → GPIO `D5`, leg 2 → `GND`. Configure pin `INPUT_PULLUP`. No external resistor. Debounce ~20 ms in firmware.
 
-**LED**: GPIO `D1` → 220 Ω resistor → LED anode → LED cathode → `GND`. Pin HIGH = on. Use red or yellow LED (Vf ≈ 2.0 V). Blue/green/white (Vf ≈ 3.0–3.2 V) won't run well at 3.3 V drive.
+**LED**: GPIO `D0` → 220 Ω resistor → LED anode (long leg) → LED cathode (short leg) → `GND`. Pin HIGH = on. Use red or yellow LED (Vf ≈ 2.0 V). Blue/green/white (Vf ≈ 3.0–3.2 V) won't run well at 3.3 V drive.
 
 **Power**: USB cable from the module's panel jack to the Mac. No Eurorack bus power in v1.
 
