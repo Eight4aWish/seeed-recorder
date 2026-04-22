@@ -1,0 +1,42 @@
+name: Retrospective
+options:
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.0"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+    CODE_SIGN_IDENTITY: "-"
+    ENABLE_HARDENED_RUNTIME: YES
+
+targets:
+  Retrospective:
+    type: application
+    platform: macOS
+    sources:
+      - path: Retrospective
+    info:
+      path: Retrospective/Info.plist
+      properties:
+        CFBundleName: Retrospective
+        CFBundleDisplayName: Retrospective
+        CFBundleIdentifier: com.n8synth.retrospective
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleExecutable: $(EXECUTABLE_NAME)
+        CFBundlePackageType: APPL
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        LSUIElement: true
+        NSMicrophoneUsageDescription: Retrospective captures audio from the selected input device so it can save the last few minutes when you press the capture button.
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.n8synth.retrospective
+        PRODUCT_NAME: Retrospective
+        ENABLE_APP_SANDBOX: NO
+        GENERATE_INFOPLIST_FILE: NO
