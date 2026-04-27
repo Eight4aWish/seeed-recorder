@@ -28,7 +28,7 @@ Channel 16, Note 60:
 
 ### Capture semantics
 
-- Lookback default **5 minutes**, user-configurable (30 s – 30 min).
+- Lookback default **2 minutes**, user-configurable (30 s – 30 min).
 - **First press**: capture window starts at `now − lookback`. LED solid.
 - **Second press**: capture window ends at `now`. Extract to WAV files. LED off. Auto-rearm.
 - Buffer strategy: **rolling on-disk scratch file per channel** (circular write), size = `lookback × sampleRate × bytesPerSample`. Survives crashes, bounded.

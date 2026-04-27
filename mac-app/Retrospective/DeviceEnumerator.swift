@@ -1,5 +1,6 @@
-// Lists CoreAudio input devices and CoreMIDI sources/destinations by name.
-// No I/O yet — this is just enough to populate Settings pickers.
+// Lists CoreAudio input devices and CoreMIDI sources/destinations.
+// Audio devices are exposed as (id, name); MIDI as names only since CoreMIDI
+// endpoint refs aren't useful to pass around in our UI.
 
 import Foundation
 import CoreAudio
@@ -7,7 +8,7 @@ import CoreMIDI
 
 @MainActor
 final class DeviceEnumerator: ObservableObject {
-    @Published private(set) var audioInputs: [String] = []
+    @Published private(set) var audioInputs: [AudioInputDevice] = []
     @Published private(set) var midiSources: [String] = []
     @Published private(set) var midiDestinations: [String] = []
 
@@ -23,7 +24,7 @@ final class DeviceEnumerator: ObservableObject {
 
     // MARK: - CoreAudio
 
-    private static func listAudioInputs() -> [String] {
+    private static func listAudioInputs() -> [AudioInputDevice] {
         var address = AudioObjectPropertyAddress(
             mSelector: kAudioHardwarePropertyDevices,
             mScope: kAudioObjectPropertyScopeGlobal,
@@ -41,8 +42,8 @@ final class DeviceEnumerator: ObservableObject {
             &address, 0, nil, &size, &ids) == noErr else { return [] }
 
         return ids.compactMap { id in
-            guard hasInputChannels(id) else { return nil }
-            return deviceName(id)
+            guard hasInputChannels(id), let name = deviceName(id) else { return nil }
+            return AudioInputDevice(id: id, name: name)
         }
     }
 
