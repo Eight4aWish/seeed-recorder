@@ -28,8 +28,8 @@ void handleNoteOn(byte channel, byte note, byte velocity) {
 }
 
 void setup() {
-  TinyUSBDevice.setManufacturerDescriptor("n8synth");
-  TinyUSBDevice.setProductDescriptor("Seeed Recorder");
+  // Device iManufacturer / iProduct are set at build time — see Makefile.
+  // This sets only the MIDI interface (port) name.
   usb_midi.setStringDescriptor("Seeed Recorder");
 
   MIDI.begin(MIDI_CHANNEL_OMNI);
