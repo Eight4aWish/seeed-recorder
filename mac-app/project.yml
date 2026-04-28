@@ -40,3 +40,4 @@ targets:
         PRODUCT_NAME: Retrospective
         ENABLE_APP_SANDBOX: NO
         GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: Retrospective/Retrospective.entitlements

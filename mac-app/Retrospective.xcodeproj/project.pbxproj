@@ -23,6 +23,7 @@
 /* Begin PBXFileReference section */
 		00403BA13062E5FC6878F3CE /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		0C0B12F374BDBBCD35EB292A /* AudioInputDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioInputDevice.swift; sourceTree = "<group>"; };
+		13843B13D942929078B08C3A /* Retrospective.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Retrospective.entitlements; sourceTree = "<group>"; };
 		24036ABB4E1CA869274A0406 /* ScratchExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScratchExtractor.swift; sourceTree = "<group>"; };
 		2C6A1BA8E2DF5824E12DF5D3 /* ScratchBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScratchBuffer.swift; sourceTree = "<group>"; };
 		3DE4BE53BE79302F540C294A /* MenuBarContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarContent.swift; sourceTree = "<group>"; };
@@ -47,6 +48,7 @@
 				00403BA13062E5FC6878F3CE /* Info.plist */,
 				3DE4BE53BE79302F540C294A /* MenuBarContent.swift */,
 				3F7F6456D7393BE9984DECA1 /* MIDIController.swift */,
+				13843B13D942929078B08C3A /* Retrospective.entitlements */,
 				53EF0D21840EF1BA3FAEA9DC /* RetrospectiveApp.swift */,
 				2C6A1BA8E2DF5824E12DF5D3 /* ScratchBuffer.swift */,
 				24036ABB4E1CA869274A0406 /* ScratchExtractor.swift */,
@@ -152,6 +154,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Retrospective/Retrospective.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_APP_SANDBOX = NO;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -232,6 +235,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Retrospective/Retrospective.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_APP_SANDBOX = NO;
 				GENERATE_INFOPLIST_FILE = NO;
