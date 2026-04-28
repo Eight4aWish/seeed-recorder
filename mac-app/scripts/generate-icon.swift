@@ -33,7 +33,7 @@ guard let sourceData = try? Data(contentsOf: sourceURL),
 // Source image is 1868×1243; the bird occupies roughly the left third.
 // We keep the natural aspect (bird is taller than wide) and centre it inside
 // the icon canvas with padding.
-let cropRect = CGRect(x: 60, y: 30, width: 830, height: 1180)
+let cropRect = CGRect(x: 60, y: 30, width: 855, height: 1180)
 guard let birdCG = sourceCG.cropping(to: cropRect) else {
     fputs("Crop failed\n", stderr)
     exit(1)
