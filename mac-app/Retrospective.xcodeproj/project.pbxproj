@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0424DDB3FC4FDC84CCB7DAB8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 230ABE6A7330343AADC6F415 /* Assets.xcassets */; };
 		1B0670E1ED986C1CD2DE99FC /* DeviceEnumerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47916848DFA36C9A3F04FA50 /* DeviceEnumerator.swift */; };
 		1BEAA4B5EEE7A8599CA1AE76 /* AudioCaptureEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA95E8222B8B416E79C7296B /* AudioCaptureEngine.swift */; };
 		218E36BDB9ADA24DA0029B56 /* ScratchExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24036ABB4E1CA869274A0406 /* ScratchExtractor.swift */; };
@@ -24,6 +25,7 @@
 		00403BA13062E5FC6878F3CE /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		0C0B12F374BDBBCD35EB292A /* AudioInputDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioInputDevice.swift; sourceTree = "<group>"; };
 		13843B13D942929078B08C3A /* Retrospective.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Retrospective.entitlements; sourceTree = "<group>"; };
+		230ABE6A7330343AADC6F415 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		24036ABB4E1CA869274A0406 /* ScratchExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScratchExtractor.swift; sourceTree = "<group>"; };
 		2C6A1BA8E2DF5824E12DF5D3 /* ScratchBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScratchBuffer.swift; sourceTree = "<group>"; };
 		3DE4BE53BE79302F540C294A /* MenuBarContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarContent.swift; sourceTree = "<group>"; };
@@ -41,6 +43,7 @@
 		5DF783F05CDB85298711EE40 /* Retrospective */ = {
 			isa = PBXGroup;
 			children = (
+				230ABE6A7330343AADC6F415 /* Assets.xcassets */,
 				BA95E8222B8B416E79C7296B /* AudioCaptureEngine.swift */,
 				0C0B12F374BDBBCD35EB292A /* AudioInputDevice.swift */,
 				D2BE2772A4F5FA12672FAEAA /* CaptureCoordinator.swift */,
@@ -82,6 +85,7 @@
 			buildConfigurationList = 47B573A6066B66E4BFBD3826 /* Build configuration list for PBXNativeTarget "Retrospective" */;
 			buildPhases = (
 				9B0DD06939CCBA831FFE89B1 /* Sources */,
+				E1C9F35D5B1295AEA192C9D9 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -127,6 +131,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		E1C9F35D5B1295AEA192C9D9 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0424DDB3FC4FDC84CCB7DAB8 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		9B0DD06939CCBA831FFE89B1 /* Sources */ = {

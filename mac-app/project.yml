@@ -31,6 +31,7 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleExecutable: $(EXECUTABLE_NAME)
         CFBundlePackageType: APPL
+        CFBundleIconName: AppIcon
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
         LSUIElement: true
         NSMicrophoneUsageDescription: Retrospective captures audio from the selected input device so it can save the last few minutes when you press the capture button.
@@ -41,3 +42,4 @@ targets:
         ENABLE_APP_SANDBOX: NO
         GENERATE_INFOPLIST_FILE: NO
         CODE_SIGN_ENTITLEMENTS: Retrospective/Retrospective.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon

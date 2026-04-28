@@ -4,11 +4,15 @@ BUILD_DIR := build
 APP := $(BUILD_DIR)/Build/Products/Release/Retrospective.app
 INSTALL_DIR := /Applications
 
-.PHONY: project release install run clean
+.PHONY: project icon release install run clean
 
 # Regenerate the Xcode project from project.yml.
 project:
 	xcodegen generate
+
+# Regenerate the AppIcon set from scripts/icon-source.jpg.
+icon:
+	swift scripts/generate-icon.swift
 
 # Build a Release configuration .app under ./build.
 release: project
