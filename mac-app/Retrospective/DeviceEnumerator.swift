@@ -43,8 +43,24 @@ final class DeviceEnumerator: ObservableObject {
 
         return ids.compactMap { id in
             guard hasInputChannels(id), let name = deviceName(id) else { return nil }
-            return AudioInputDevice(id: id, name: name)
+            let uid = deviceUID(id)
+            return AudioInputDevice(id: id, uid: uid, name: name)
         }
+    }
+
+    private static func deviceUID(_ device: AudioDeviceID) -> String? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyDeviceUID,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain)
+
+        var uid: CFString = "" as CFString
+        var size = UInt32(MemoryLayout<CFString>.size)
+        guard AudioObjectGetPropertyData(device, &address, 0, nil, &size, &uid) == noErr else {
+            return nil
+        }
+        let s = uid as String
+        return s.isEmpty ? nil : s
     }
 
     private static func hasInputChannels(_ device: AudioDeviceID) -> Bool {

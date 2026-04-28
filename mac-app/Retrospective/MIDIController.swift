@@ -17,12 +17,22 @@ final class MIDIController: ObservableObject {
 
     @Published var sourceName: String? {
         didSet {
+            persist(name: sourceName, key: "midiSourceName")
             if oldValue != sourceName { reconnectSource() }
         }
     }
     @Published var destinationName: String? {
         didSet {
+            persist(name: destinationName, key: "midiDestinationName")
             if oldValue != destinationName { resolveDestination() }
+        }
+    }
+
+    private func persist(name: String?, key: String) {
+        if let n = name {
+            UserDefaults.standard.set(n, forKey: key)
+        } else {
+            UserDefaults.standard.removeObject(forKey: key)
         }
     }
     @Published private(set) var lastError: String?
@@ -69,6 +79,14 @@ final class MIDIController: ObservableObject {
         } else {
             lastError = "MIDIOutputPortCreate failed (\(outStatus))"
         }
+
+        // Restore persisted MIDI source/destination. didSet doesn't fire from
+        // inside init, so we set the stored values then trigger reconnect/resolve
+        // manually now that the input/output ports are ready.
+        sourceName = UserDefaults.standard.string(forKey: "midiSourceName")
+        destinationName = UserDefaults.standard.string(forKey: "midiDestinationName")
+        if sourceName != nil { reconnectSource() }
+        if destinationName != nil { resolveDestination() }
     }
 
     deinit {

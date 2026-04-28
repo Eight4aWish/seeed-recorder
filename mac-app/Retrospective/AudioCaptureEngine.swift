@@ -32,16 +32,32 @@ final class AudioCaptureEngine: ObservableObject {
     @Published private(set) var scratchPath: String?
     @Published private(set) var lastError: String?
 
-    @Published var lookbackSeconds: Double = 120   // 2 min default
+    @Published var lookbackSeconds: Double {
+        didSet {
+            UserDefaults.standard.set(lookbackSeconds, forKey: "lookbackSeconds")
+        }
+    }
 
     @Published var selectedDevice: AudioInputDevice? {
         didSet {
+            // Persist the device's stable UID, not its AudioDeviceID
+            // (which can change across launches / unplugs).
+            if let uid = selectedDevice?.uid {
+                UserDefaults.standard.set(uid, forKey: "audioInputUID")
+            } else if selectedDevice == nil {
+                UserDefaults.standard.removeObject(forKey: "audioInputUID")
+            }
             if oldValue?.id == selectedDevice?.id { return }
             stop()
             if let dev = selectedDevice {
                 start(deviceID: dev.id)
             }
         }
+    }
+
+    init() {
+        let stored = UserDefaults.standard.double(forKey: "lookbackSeconds")
+        self.lookbackSeconds = stored > 0 ? stored : 120   // 2 min default
     }
 
     private var activeDeviceID: AudioDeviceID = 0

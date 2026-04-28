@@ -72,10 +72,16 @@ struct SettingsView: View {
                 }
 
                 LabeledContent("Output") {
-                    Text(coordinator.outputRoot.path)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                        .truncationMode(.middle)
+                    HStack {
+                        Text(coordinator.outputRoot.path)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                            .truncationMode(.middle)
+                        Spacer()
+                        Button("Choose…") {
+                            coordinator.chooseOutputFolder()
+                        }
+                    }
                 }
             }
 

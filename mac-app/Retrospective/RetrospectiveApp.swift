@@ -49,6 +49,16 @@ struct RetrospectiveApp: App {
     }
 
     private func autoSelectSeeedRecorder() {
+        // Audio input: restore by persisted CoreAudio device UID. This keeps the
+        // user's selection across reboots even though the AudioDeviceID changes.
+        if engine.selectedDevice == nil,
+           let uid = UserDefaults.standard.string(forKey: "audioInputUID"),
+           let dev = devices.audioInputs.first(where: { $0.uid == uid }) {
+            engine.selectedDevice = dev
+        }
+
+        // MIDI: only fall back to "Seeed Recorder" when there's no persisted
+        // preference (i.e. user hasn't picked anything yet).
         if midi.sourceName == nil, devices.midiSources.contains("Seeed Recorder") {
             midi.sourceName = "Seeed Recorder"
         }

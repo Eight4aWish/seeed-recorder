@@ -7,6 +7,7 @@
 //                 ignored. When the work finishes, LED off, state → .idle.
 
 import Foundation
+import AppKit
 import OSLog
 
 private let log = Logger(subsystem: "com.n8synth.retrospective", category: "Coordinator")
@@ -20,10 +21,11 @@ final class CaptureCoordinator: ObservableObject {
     @Published private(set) var lastResult: ExtractionResult?
     @Published private(set) var lastError: String?
 
-    @Published var outputRoot: URL = {
-        let music = FileManager.default.urls(for: .musicDirectory, in: .userDomainMask).first!
-        return music.appendingPathComponent("Retrospective")
-    }()
+    @Published var outputRoot: URL {
+        didSet {
+            UserDefaults.standard.set(outputRoot.path, forKey: "outputRootPath")
+        }
+    }
 
     let midi: MIDIController
     let engine: AudioCaptureEngine
@@ -31,9 +33,33 @@ final class CaptureCoordinator: ObservableObject {
     init(midi: MIDIController, engine: AudioCaptureEngine) {
         self.midi = midi
         self.engine = engine
+
+        if let saved = UserDefaults.standard.string(forKey: "outputRootPath") {
+            self.outputRoot = URL(fileURLWithPath: saved)
+        } else {
+            let music = FileManager.default.urls(for: .musicDirectory, in: .userDomainMask).first!
+            self.outputRoot = music.appendingPathComponent("Retrospective")
+        }
+
         midi.onButtonPress = { [weak self] in self?.handleButton() }
         // Defensive: ensure the LED is off when we boot.
         midi.sendLEDOff()
+    }
+
+    /// Show a folder-picker and update `outputRoot` if the user chose one.
+    /// No security-scoped bookmark is needed — the app isn't sandboxed yet.
+    func chooseOutputFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.directoryURL = outputRoot
+        panel.message = "Choose where Retrospective should save WAV captures."
+        panel.prompt = "Use Folder"
+        if panel.runModal() == .OK, let url = panel.url {
+            outputRoot = url
+        }
     }
 
     private func handleButton() {
@@ -74,7 +100,14 @@ final class CaptureCoordinator: ObservableObject {
             await MainActor.run { [weak self] in
                 guard let self else { return }
                 self.lastResult = result
-                self.lastError = errMsg
+                // Surface per-channel errors prominently. If extract() itself
+                // didn't throw but channels had write failures, the user would
+                // otherwise see "0 files saved" with no explanation.
+                if let firstError = result?.channelErrors.first {
+                    self.lastError = "ch\(firstError.channel + 1): \(firstError.message)"
+                } else {
+                    self.lastError = errMsg
+                }
                 self.midi.sendLEDOff()
                 self.state = .idle
                 if let r = result {

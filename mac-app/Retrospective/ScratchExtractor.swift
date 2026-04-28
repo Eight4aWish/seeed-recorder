@@ -16,6 +16,7 @@ struct ExtractionResult {
     let writtenFiles: [URL]
     let skippedSilentChannels: [Int]
     let peaksDBFS: [Float]   // -infinity for pure-silence channels; one entry per channel
+    let channelErrors: [(channel: Int, message: String)]
 }
 
 private struct ChannelResult {
@@ -82,6 +83,7 @@ enum ScratchExtractor {
         var written: [URL] = []
         var skipped: [Int] = []
         var peaks: [Float] = []
+        var errors: [(channel: Int, message: String)] = []
         peaks.reserveCapacity(nch)
 
         for (ch, r) in results.enumerated() {
@@ -90,7 +92,7 @@ enum ScratchExtractor {
 
             if let err = r.errorMessage {
                 log.error("ch\(ch + 1, privacy: .public): \(err, privacy: .public)")
-                skipped.append(ch)
+                errors.append((channel: ch, message: err))
             } else if let url = r.fileURL {
                 log.info("ch\(ch + 1, privacy: .public): \(dbStr, privacy: .public) → saved")
                 written.append(url)
@@ -101,13 +103,14 @@ enum ScratchExtractor {
         }
 
         let elapsed = Date().timeIntervalSince(started)
-        log.info("Extracted \(written.count, privacy: .public) ch, skipped \(skipped.count, privacy: .public) silent in \(elapsed, format: .fixed(precision: 2), privacy: .public) s → \(outputRoot.path, privacy: .public)")
+        log.info("Extracted \(written.count, privacy: .public) ch, skipped \(skipped.count, privacy: .public) silent, errors \(errors.count, privacy: .public) in \(elapsed, format: .fixed(precision: 2), privacy: .public) s → \(outputRoot.path, privacy: .public)")
 
         return ExtractionResult(
             outputDirectory: outputRoot,
             writtenFiles: written,
             skippedSilentChannels: skipped,
-            peaksDBFS: peaks)
+            peaksDBFS: peaks,
+            channelErrors: errors)
     }
 
     // MARK: - Per-channel work (runs on a concurrentPerform thread)
