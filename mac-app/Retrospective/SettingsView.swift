@@ -85,6 +85,27 @@ struct SettingsView: View {
                 }
             }
 
+            Section("Stereo Pairs") {
+                if engine.isCapturing, engine.channelCount >= 2 {
+                    Text("Marked pairs save as one interleaved stereo WAV; everything else stays mono.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    ForEach(Array(stride(from: 0, to: engine.channelCount - 1, by: 2)), id: \.self) { left in
+                        Toggle("Channels \(left + 1) + \(left + 2)", isOn: Binding(
+                            get: { coordinator.stereoPairLefts.contains(left) },
+                            set: { on in
+                                if on { coordinator.stereoPairLefts.insert(left) }
+                                else { coordinator.stereoPairLefts.remove(left) }
+                            }
+                        ))
+                    }
+                } else {
+                    Text("Select an audio input to configure stereo pairs.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             Section {
                 Button("Refresh Devices") {
                     devices.refresh()

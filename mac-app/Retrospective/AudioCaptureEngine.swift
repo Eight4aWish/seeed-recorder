@@ -178,21 +178,6 @@ final class AudioCaptureEngine: ObservableObject {
         log.info("Capture stopped")
     }
 
-    /// Extract the most recent lookback window into per-channel WAV files.
-    /// Synchronous — disk read of the full scratch (~1 GB at default settings)
-    /// can briefly stall the UI. Acceptable for v1; can be moved to a background
-    /// queue when we polish.
-    func extract(firstPressTime: Date, to outputRoot: URL) throws -> ExtractionResult {
-        guard let scratch = scratchBuffer else {
-            throw NSError(domain: "AudioCaptureEngine", code: 100,
-                          userInfo: [NSLocalizedDescriptionKey: "No active capture; nothing to save."])
-        }
-        return try ScratchExtractor.extract(
-            scratch: scratch,
-            firstPressTime: firstPressTime,
-            outputRoot: outputRoot)
-    }
-
     private func startRateTimer() {
         let timer = DispatchSource.makeTimerSource(queue: .main)
         timer.schedule(deadline: .now() + 1.0, repeating: 1.0)

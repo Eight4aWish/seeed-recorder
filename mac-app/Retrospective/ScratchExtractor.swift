@@ -1,10 +1,12 @@
 // On capture trigger:
 //   1. Pause the scratch writer so the per-channel files are stable while we read.
 //   2. Snapshot the current circular write offset (oldest-frame position).
-//   3. For each channel in parallel: read chronologically, compute peak,
-//      write a WAV if peak ≥ silence threshold.
-//   4. Log peak dBFS for every channel (saved or skipped).
-//   5. Resume the writer.
+//   3. Group channels into output units — a marked stereo pair becomes one
+//      2-channel WAV; everything else is a mono WAV.
+//   4. For each unit in parallel: read its channel(s) chronologically, compute
+//      peak, write a WAV if peak ≥ silence threshold.
+//   5. Log peak dBFS for every unit (saved or skipped).
+//   6. Resume the writer.
 
 import Foundation
 import OSLog
@@ -15,11 +17,11 @@ struct ExtractionResult {
     let outputDirectory: URL
     let writtenFiles: [URL]
     let skippedSilentChannels: [Int]
-    let peaksDBFS: [Float]   // -infinity for pure-silence channels; one entry per channel
     let channelErrors: [(channel: Int, message: String)]
 }
 
-private struct ChannelResult {
+private struct UnitResult {
+    let channels: [Int]
     let peakDBFS: Float
     let fileURL: URL?
     let errorMessage: String?
@@ -30,10 +32,13 @@ enum ScratchExtractor {
     static let silenceThresholdDBFS: Float = -60.0
     static let silenceThresholdLinear: Float = pow(10.0, silenceThresholdDBFS / 20.0)
 
+    /// - Parameter stereoPairLefts: 0-indexed left channels; each forms a stereo
+    ///   unit with the channel immediately after it.
     static func extract(
         scratch: ScratchBuffer,
         firstPressTime: Date,
-        outputRoot: URL
+        outputRoot: URL,
+        stereoPairLefts: Set<Int>
     ) throws -> ExtractionResult {
         let format = scratch.format
         let framesPerFile = format.framesPerFile
@@ -53,21 +58,30 @@ enum ScratchExtractor {
         let sampleRate = format.sampleRate
         let scratchDir = scratch.directory
 
+        // Group channels into mono / stereo output units.
+        var units: [[Int]] = []
+        var ch = 0
+        while ch < nch {
+            if stereoPairLefts.contains(ch), ch + 1 < nch {
+                units.append([ch, ch + 1])
+                ch += 2
+            } else {
+                units.append([ch])
+                ch += 1
+            }
+        }
+
         let started = Date()
 
-        var results: [ChannelResult] = Array(
-            repeating: ChannelResult(peakDBFS: -.infinity, fileURL: nil, errorMessage: nil),
-            count: nch)
+        var results = [UnitResult](
+            repeating: UnitResult(channels: [], peakDBFS: -.infinity, fileURL: nil, errorMessage: nil),
+            count: units.count)
 
-        // Per-channel reads + peak compute + WAV write run in parallel. Each
-        // iteration owns its own scratch fd, sample buffer, and output file —
-        // no shared mutable state — and writes its result into a fixed index of
-        // `results`, so concurrent writes don't collide.
         results.withUnsafeMutableBufferPointer { buf in
             let ptr = buf.baseAddress!
-            DispatchQueue.concurrentPerform(iterations: nch) { ch in
-                ptr[ch] = processChannel(
-                    ch: ch,
+            DispatchQueue.concurrentPerform(iterations: units.count) { i in
+                ptr[i] = processUnit(
+                    channels: units[i],
                     scratchDir: scratchDir,
                     framesPerFile: framesPerFile,
                     writeOffsetFrames: writeOffsetFrames,
@@ -82,41 +96,38 @@ enum ScratchExtractor {
 
         var written: [URL] = []
         var skipped: [Int] = []
-        var peaks: [Float] = []
         var errors: [(channel: Int, message: String)] = []
-        peaks.reserveCapacity(nch)
 
-        for (ch, r) in results.enumerated() {
-            peaks.append(r.peakDBFS)
+        for r in results {
+            let label = r.channels.map { String($0 + 1) }.joined(separator: "+")
             let dbStr = r.peakDBFS.isFinite ? String(format: "%.1f dBFS", r.peakDBFS) : "-inf dBFS"
 
             if let err = r.errorMessage {
-                log.error("ch\(ch + 1, privacy: .public): \(err, privacy: .public)")
-                errors.append((channel: ch, message: err))
+                log.error("ch\(label, privacy: .public): \(err, privacy: .public)")
+                errors.append((channel: r.channels.first ?? -1, message: err))
             } else if let url = r.fileURL {
-                log.info("ch\(ch + 1, privacy: .public): \(dbStr, privacy: .public) → saved")
+                log.info("ch\(label, privacy: .public): \(dbStr, privacy: .public) → saved")
                 written.append(url)
             } else {
-                log.info("ch\(ch + 1, privacy: .public): \(dbStr, privacy: .public) → skipped")
-                skipped.append(ch)
+                log.info("ch\(label, privacy: .public): \(dbStr, privacy: .public) → skipped")
+                skipped.append(contentsOf: r.channels)
             }
         }
 
         let elapsed = Date().timeIntervalSince(started)
-        log.info("Extracted \(written.count, privacy: .public) ch, skipped \(skipped.count, privacy: .public) silent, errors \(errors.count, privacy: .public) in \(elapsed, format: .fixed(precision: 2), privacy: .public) s → \(outputRoot.path, privacy: .public)")
+        log.info("Extracted \(written.count, privacy: .public) files, skipped \(skipped.count, privacy: .public) silent ch, errors \(errors.count, privacy: .public) in \(elapsed, format: .fixed(precision: 2), privacy: .public) s → \(outputRoot.path, privacy: .public)")
 
         return ExtractionResult(
             outputDirectory: outputRoot,
             writtenFiles: written,
             skippedSilentChannels: skipped,
-            peaksDBFS: peaks,
             channelErrors: errors)
     }
 
-    // MARK: - Per-channel work (runs on a concurrentPerform thread)
+    // MARK: - Per-unit work (runs on a concurrentPerform thread)
 
-    private static func processChannel(
-        ch: Int,
+    private static func processUnit(
+        channels: [Int],
         scratchDir: URL,
         framesPerFile: Int,
         writeOffsetFrames: Int,
@@ -126,33 +137,42 @@ enum ScratchExtractor {
         sampleRate: Double,
         timestamp: String,
         outputRoot: URL
-    ) -> ChannelResult {
+    ) -> UnitResult {
         do {
-            let scratchFile = scratchDir.appendingPathComponent(String(format: "ch%02d.pcm", ch))
-            let samples = try readChannelChronological(
-                file: scratchFile,
-                framesPerFile: framesPerFile,
-                writeOffsetFrames: writeOffsetFrames,
-                bytesPerSample: bytesPerSample,
-                firstChunkFrames: firstChunkFrames,
-                secondChunkFrames: secondChunkFrames)
-
-            let peakLinear = WAVWriter.peakAmplitude(samples)
-            let peakDB: Float = peakLinear > 0 ? 20 * log10f(peakLinear) : -.infinity
-
-            if peakLinear >= silenceThresholdLinear {
-                let outURL = outputRoot.appendingPathComponent(
-                    String(format: "%@_ch%02d.wav", timestamp, ch + 1))
-                try WAVWriter.writeFloat32(
-                    url: outURL,
-                    sampleRate: sampleRate,
-                    channels: [samples])
-                return ChannelResult(peakDBFS: peakDB, fileURL: outURL, errorMessage: nil)
-            } else {
-                return ChannelResult(peakDBFS: peakDB, fileURL: nil, errorMessage: nil)
+            var perChannelSamples: [[Float]] = []
+            var unitPeak: Float = 0
+            for ch in channels {
+                let scratchFile = scratchDir.appendingPathComponent(String(format: "ch%02d.pcm", ch))
+                let samples = try readChannelChronological(
+                    file: scratchFile,
+                    framesPerFile: framesPerFile,
+                    writeOffsetFrames: writeOffsetFrames,
+                    bytesPerSample: bytesPerSample,
+                    firstChunkFrames: firstChunkFrames,
+                    secondChunkFrames: secondChunkFrames)
+                unitPeak = max(unitPeak, WAVWriter.peakAmplitude(samples))
+                perChannelSamples.append(samples)
             }
+
+            let peakDB: Float = unitPeak > 0 ? 20 * log10f(unitPeak) : -.infinity
+
+            // Keep the whole unit if any channel in it has signal.
+            guard unitPeak >= silenceThresholdLinear else {
+                return UnitResult(channels: channels, peakDBFS: peakDB, fileURL: nil, errorMessage: nil)
+            }
+
+            let suffix: String
+            if channels.count == 2 {
+                suffix = String(format: "ch%02d-%02d", channels[0] + 1, channels[1] + 1)
+            } else {
+                suffix = String(format: "ch%02d", channels[0] + 1)
+            }
+            let outURL = outputRoot.appendingPathComponent("\(timestamp)_\(suffix).wav")
+            try WAVWriter.writeFloat32(url: outURL, sampleRate: sampleRate, channels: perChannelSamples)
+            return UnitResult(channels: channels, peakDBFS: peakDB, fileURL: outURL, errorMessage: nil)
         } catch {
-            return ChannelResult(peakDBFS: -.infinity, fileURL: nil, errorMessage: error.localizedDescription)
+            return UnitResult(channels: channels, peakDBFS: -.infinity, fileURL: nil,
+                              errorMessage: error.localizedDescription)
         }
     }
 

@@ -27,6 +27,13 @@ final class CaptureCoordinator: ObservableObject {
         }
     }
 
+    /// 0-indexed left channels of stereo pairs. Each pairs with the channel after it.
+    @Published var stereoPairLefts: Set<Int> {
+        didSet {
+            UserDefaults.standard.set(Array(stereoPairLefts).sorted(), forKey: "stereoPairLefts")
+        }
+    }
+
     let midi: MIDIController
     let engine: AudioCaptureEngine
 
@@ -40,6 +47,9 @@ final class CaptureCoordinator: ObservableObject {
             let music = FileManager.default.urls(for: .musicDirectory, in: .userDomainMask).first!
             self.outputRoot = music.appendingPathComponent("Retrospective")
         }
+
+        let storedPairs = UserDefaults.standard.array(forKey: "stereoPairLefts") as? [Int] ?? []
+        self.stereoPairLefts = Set(storedPairs)
 
         midi.onButtonPress = { [weak self] in self?.handleButton() }
         // Defensive: ensure the LED is off when we boot.
@@ -81,6 +91,7 @@ final class CaptureCoordinator: ObservableObject {
         log.info("Capture triggered at \(pressTime.description, privacy: .public)")
 
         let outputRoot = self.outputRoot
+        let stereoPairs = self.stereoPairLefts
 
         // Disk-bound work runs off the main actor so the UI stays live.
         Task.detached(priority: .userInitiated) { [weak self] in
@@ -90,7 +101,8 @@ final class CaptureCoordinator: ObservableObject {
                 result = try ScratchExtractor.extract(
                     scratch: scratch,
                     firstPressTime: pressTime,
-                    outputRoot: outputRoot)
+                    outputRoot: outputRoot,
+                    stereoPairLefts: stereoPairs)
                 errMsg = nil
             } catch {
                 result = nil
