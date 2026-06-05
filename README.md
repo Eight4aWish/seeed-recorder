@@ -6,7 +6,7 @@ Built for studio / Eurorack workflows where the best take just happened and you 
 
 ## How it works
 
-The Mac app ("Retrospective") lives in the menu bar and continuously buffers every enabled channel from your CoreAudio input device to per-channel circular files in `~/Library/Application Support/Retrospective/scratch/`, sized to `lookback × sampleRate × bytesPerSample`. Default lookback is 5 minutes; the buffer is bounded by definition.
+The Mac app ("Retrospective") lives in the menu bar and continuously buffers every input channel from your CoreAudio device to per-channel circular files in `~/Library/Application Support/Retrospective/scratch/`, sized to `lookback × sampleRate × bytesPerSample`. Default lookback is 60 seconds (user-configurable, 30 s – 30 min); the buffer is bounded by definition.
 
 On a capture trigger it pauses the writer, reads each channel chronologically in parallel, and writes the rest as 32-bit float WAVs to the chosen output folder.
 

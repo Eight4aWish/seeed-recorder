@@ -31,19 +31,20 @@ file format (see "Audio / files" below).
 
 ### MIDI protocol (RP2040 trigger path)
 
-Channel 16, Note 60. Single-press semantics — there is no longer a
-two-press window.
+Channel 16, Note 60. Single press = one trigger event; there is no two-press
+window. The firmware has never had two-press logic — the old two-press
+semantics lived only on the Mac side and have been removed.
 
 | Direction | Message | Meaning |
 |---|---|---|
-| Seeed → Mac | Note On vel 127 | Capture press |
+| Seeed → Mac | Note On vel 127 | Capture press. Firmware also lights its own LED locally at this moment — no Mac round-trip needed for the press feedback. |
 | Seeed → Mac | Note Off | Released (app ignores) |
-| Mac → Seeed | Note On vel 127 | LED solid (capture in flight) |
-| Mac → Seeed | Note On vel 1 | LED off (idle, or success) |
-| Mac → Seeed | Note On vel 64 | LED error-sticky (last capture failed) |
+| Mac → Seeed | Note On vel 127 | LED solid (capture in flight). Redundant for the RP2040 button path; needed for menu-bar / HTTP triggers where the firmware didn't see the press. |
+| Mac → Seeed | Note On vel 1 | LED off (idle, or successful capture round-trip) |
+| Mac → Seeed | Note On vel 64 | LED blink at ~1 Hz (signals a capture error) |
 
-LED clears from error-sticky to off on the next successful capture
-round-trip.
+The blink clears on the next vel 127 / vel 1 / vel 64 the firmware receives,
+or on the next local button press.
 
 ### HTTP/mDNS protocol (C5 trigger path)
 
@@ -58,7 +59,7 @@ Summary:
 
 ### Capture semantics (both transports)
 
-- Lookback default **5 minutes**, user-configurable (30 s – 30 min).
+- Lookback default **60 seconds**, user-configurable (30 s – 30 min).
 - One press = capture the last `lookback` seconds. Auto-rearm — no
   second press needed.
 - While extraction is in flight (usually <2 s), additional presses
@@ -82,7 +83,13 @@ information is omitted from captures.
   32-bit float regardless of source bit depth).
 - Target device: Focusrite Scarlett 16i6 (up to 16 channels), but any
   CoreAudio input device works.
-- User configures each channel: `Off` | `Mono` | `Stereo L (pairs with next)` | `Stereo R`.
+- Channel handling (current implementation): every input channel is captured;
+  the user marks adjacent pairs as stereo via a toggle list in Settings.
+  Marked pairs save as one interleaved 2-channel WAV (`ch<NN>-<MM>`);
+  unmarked channels save as mono WAVs. At extraction, channels whose peak is
+  below **−60 dBFS** are skipped as silence. (The fuller `Off / Mono / Stereo L /
+  Stereo R` per-channel role table from the original spec is deferred — the
+  lightweight model serves the current use cases.)
 - Filename format:
   `YYYY-MM-DD_HH-MM-SS[_<bpm>bpm]_ch<NN>[-<NN>].wav`
   - Timestamp = wall-clock at trigger time

@@ -14,11 +14,11 @@ save a window ending at the moment they realize "that was good."
   - **ESP32-C5 + HTTP/WiFi** for mobile rigs that move around and connect over the LAN.
 - Re-usable trigger: any MIDI controller can fire it on the USB-MIDI path.
 - Manual menu-bar trigger for testing / disconnected use.
-- Multichannel support (up to 16 channels from a Focusrite Scarlett 16i6).
-- Per-channel configuration: mono or stereo pair.
+- Multichannel support (tested on a Focusrite Scarlett 16i16 4th Gen, which exposes 18 input channels including a 2-channel loopback).
+- Lightweight per-channel configuration: each input is saved as mono by default; the user may mark adjacent pairs as stereo. Silent channels (peak < −60 dBFS at extract time) are skipped.
 - WAV output compatible with Ableton (no multichannel WAVs — emit sibling files).
 - **One-press capture**: press = save the last N minutes ending at the moment of press. Auto-rearm.
-- Default lookback: 5 minutes, user-configurable.
+- Default lookback: 60 seconds, user-configurable (30 s – 30 min).
 - Mac app keeps buffering if the modules are disconnected; button triggers simply become unavailable until reconnect.
 - BPM, when known, baked into both filename and WAV metadata. Known when the Mac app is currently joined to an Ableton Link session as a follower; unknown / omitted otherwise.
 
@@ -73,11 +73,17 @@ captures when neither module is in the rig.
 Arduino + Adafruit TinyUSB on the arduino-pico core. Single `.ino` file.
 
 - Poll button on `D5` with internal pull-up. Debounce ~20 ms.
-- On press, send Note On (ch 16, note 60, vel 127). On release, Note Off.
+- On press, immediately set the local LED solid AND send Note On (ch 16,
+  note 60, vel 127). The local LED light-up means the user sees instant
+  feedback without waiting for the Mac round-trip; a pressed button always
+  also clears any sticky error blink. On release, send Note Off.
 - Listen for incoming Note On ch 16 note 60:
-  - vel 127 → LED solid (capture in flight)
-  - vel 64 → LED solid + slow blink overlay (error-sticky, last capture failed)
-  - vel 1 → LED off (idle, or success)
+  - vel 127 → LED solid (capture in flight). Idempotent for button-triggered
+    captures; this is what lights the LED for menu-bar / HTTP triggers where
+    the firmware didn't see the press itself.
+  - vel 64 → LED blink at ~1 Hz (capture error). Sticky until the next
+    inbound Note On or local button press.
+  - vel 1 → LED off (idle, or successful capture round-trip).
 
 ### Seeed C5 firmware
 
@@ -100,7 +106,7 @@ SwiftUI + AppKit, macOS Sonoma+, menu-bar app via `MenuBarExtra`.
 
 #### Rolling disk buffer
 
-- Scratch directory: `~/Library/Application Support/Retrospective/buffer/`.
+- Scratch directory: `~/Library/Application Support/Retrospective/scratch/`.
 - One fixed-size file per enabled channel, written circularly.
 - File size = `lookback × sampleRate × bytesPerSample` (e.g. ~43 MB per channel for 5 min @ 48 kHz / 24-bit).
 - Track `(currentWritePosition, timestampAtPosition)` in memory; persist periodically so a restart can roughly resume.
@@ -131,21 +137,29 @@ underpin this on the Mac side.
 
 #### Extraction
 
-For each enabled channel:
+For each output unit (mono channel, or stereo pair if marked):
 
-- If mono: write one WAV spanning `[now − lookback, now]` from that channel's scratch file.
-- If stereo L: read from its channel and its paired (+1) channel, interleave, write one stereo WAV.
+- Mono unit: read one channel chronologically and write a single-channel WAV.
+- Stereo unit (a pair the user marked): read both channels and write one
+  interleaved 2-channel WAV.
+- Compute peak amplitude per unit; **skip units whose peak is below −60 dBFS**
+  (the silence threshold) so disconnected / dead channels don't produce
+  empty files.
 - Filename: `YYYY-MM-DD_HH-MM-SS[_<bpm>bpm]_ch<NN>[-<NN>].wav`.
 - Timestamp = wall-clock at trigger time.
-- `<bpm>` segment included only when the Link follower currently has a tempo (rounded to nearest integer).
-- WAV metadata: write BPM + Link play state + capture timestamp into the LIST-INFO chunk (`ICMT`, `ICRD`, `ISFT`) so tempo survives a rename.
+- `<bpm>` segment included only when the Link follower currently has a tempo
+  (rounded to nearest integer).
+- WAV metadata: write BPM + Link play state + capture timestamp into the
+  LIST-INFO chunk (`ICMT`, `ICRD`, `ISFT`) so tempo survives a rename.
 
 #### Settings UI
 
-- Device picker.
-- Output folder (NSOpenPanel, store security-scoped bookmark).
+- Audio input picker (CoreAudio devices, persisted by stable device UID).
+- MIDI source / destination pickers (CoreMIDI endpoints).
+- Output folder (NSOpenPanel; persisted as a plain path while the app is
+  non-sandboxed; switch to a security-scoped bookmark when sandbox is enabled).
 - Lookback seconds slider (30 s – 30 min).
-- Channel table: row per channel with Enable, Role (Off / Mono / Stereo L / Stereo R).
+- Stereo pair toggles (one per adjacent pair given the current channel count).
 - Manual capture button (mirrors module presses).
 - Read-only status row: current audio source, Link peer count, current tempo.
 

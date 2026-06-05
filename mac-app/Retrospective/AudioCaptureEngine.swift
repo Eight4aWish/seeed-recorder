@@ -57,7 +57,7 @@ final class AudioCaptureEngine: ObservableObject {
 
     init() {
         let stored = UserDefaults.standard.double(forKey: "lookbackSeconds")
-        self.lookbackSeconds = stored > 0 ? stored : 120   // 2 min default
+        self.lookbackSeconds = stored > 0 ? stored : 60   // 1 min default
     }
 
     private var activeDeviceID: AudioDeviceID = 0
