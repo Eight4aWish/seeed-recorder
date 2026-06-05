@@ -124,8 +124,9 @@ final class MIDIController: ObservableObject {
         log.info("MIDI destination resolved: \(name, privacy: .public)")
     }
 
-    func sendLEDOn()  { sendNoteOn(velocity: 127) }
-    func sendLEDOff() { sendNoteOn(velocity: 1) }
+    func sendLEDOn()    { sendNoteOn(velocity: 127) }
+    func sendLEDOff()   { sendNoteOn(velocity: 1) }
+    func sendLEDError() { sendNoteOn(velocity: 64) }   // sticky 1 Hz blink
 
     private func sendNoteOn(velocity: UInt8) {
         guard outputPort != 0, resolvedDestination != 0 else { return }

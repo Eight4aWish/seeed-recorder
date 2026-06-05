@@ -17,6 +17,7 @@
 		943645D0B18282982BD67883 /* CaptureCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2BE2772A4F5FA12672FAEAA /* CaptureCoordinator.swift */; };
 		9DC67554540D767E2B761A88 /* MIDIController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F7F6456D7393BE9984DECA1 /* MIDIController.swift */; };
 		A5098E7E0A900605266D2427 /* WAVWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9955975E986C43D32DE40E9 /* WAVWriter.swift */; };
+		EEF7CE6CC19844E37B8665F9 /* HTTPServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F19016FBF98C0467EF2FE63D /* HTTPServer.swift */; };
 		F9EFF5D803496E6B906E3314 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F08FDFDC9D1DED05BE3B69FE /* SettingsView.swift */; };
 		FA6BA35B5694814447981DA0 /* ScratchBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C6A1BA8E2DF5824E12DF5D3 /* ScratchBuffer.swift */; };
 /* End PBXBuildFile section */
@@ -37,6 +38,7 @@
 		D2BE2772A4F5FA12672FAEAA /* CaptureCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureCoordinator.swift; sourceTree = "<group>"; };
 		DAF627B8751C6504D20F193D /* Retrospective.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Retrospective.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F08FDFDC9D1DED05BE3B69FE /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		F19016FBF98C0467EF2FE63D /* HTTPServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPServer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -48,6 +50,7 @@
 				0C0B12F374BDBBCD35EB292A /* AudioInputDevice.swift */,
 				D2BE2772A4F5FA12672FAEAA /* CaptureCoordinator.swift */,
 				47916848DFA36C9A3F04FA50 /* DeviceEnumerator.swift */,
+				F19016FBF98C0467EF2FE63D /* HTTPServer.swift */,
 				00403BA13062E5FC6878F3CE /* Info.plist */,
 				3DE4BE53BE79302F540C294A /* MenuBarContent.swift */,
 				3F7F6456D7393BE9984DECA1 /* MIDIController.swift */,
@@ -152,6 +155,7 @@
 				2B0EF52F8DFAEDF68DDF3C9F /* AudioInputDevice.swift in Sources */,
 				943645D0B18282982BD67883 /* CaptureCoordinator.swift in Sources */,
 				1B0670E1ED986C1CD2DE99FC /* DeviceEnumerator.swift in Sources */,
+				EEF7CE6CC19844E37B8665F9 /* HTTPServer.swift in Sources */,
 				9DC67554540D767E2B761A88 /* MIDIController.swift in Sources */,
 				32534E3A05A1ABC671AF9C36 /* MenuBarContent.swift in Sources */,
 				3123B828CDC49DD1A12BAFE6 /* RetrospectiveApp.swift in Sources */,

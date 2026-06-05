@@ -12,13 +12,17 @@ struct RetrospectiveApp: App {
     @StateObject private var engine: AudioCaptureEngine
     @StateObject private var midi: MIDIController
     @StateObject private var coordinator: CaptureCoordinator
+    @StateObject private var httpServer: HTTPServer
 
     init() {
         let engine = AudioCaptureEngine()
         let midi = MIDIController()
+        let coordinator = CaptureCoordinator(midi: midi, engine: engine)
+        let http = HTTPServer(coordinator: coordinator, engine: engine)
         _engine = StateObject(wrappedValue: engine)
         _midi = StateObject(wrappedValue: midi)
-        _coordinator = StateObject(wrappedValue: CaptureCoordinator(midi: midi, engine: engine))
+        _coordinator = StateObject(wrappedValue: coordinator)
+        _httpServer = StateObject(wrappedValue: http)
     }
 
     var body: some Scene {
@@ -28,7 +32,10 @@ struct RetrospectiveApp: App {
                 .environmentObject(engine)
                 .environmentObject(midi)
                 .environmentObject(coordinator)
-                .onAppear { autoSelectSeeedRecorder() }
+                .environmentObject(httpServer)
+                .onAppear {
+                    autoSelectSeeedRecorder()
+                }
         }
         .menuBarExtraStyle(.menu)
 
@@ -38,6 +45,7 @@ struct RetrospectiveApp: App {
                 .environmentObject(engine)
                 .environmentObject(midi)
                 .environmentObject(coordinator)
+                .environmentObject(httpServer)
         }
     }
 

@@ -5,6 +5,7 @@ struct SettingsView: View {
     @EnvironmentObject var engine: AudioCaptureEngine
     @EnvironmentObject var midi: MIDIController
     @EnvironmentObject var coordinator: CaptureCoordinator
+    @EnvironmentObject var httpServer: HTTPServer
 
     private var lookbackMinutes: Binding<Double> {
         Binding(
@@ -106,6 +107,18 @@ struct SettingsView: View {
                 }
             }
 
+            Section("HTTP / Bonjour") {
+                LabeledContent("Listener") {
+                    Text(httpServer.isRunning
+                         ? "Listening on TCP/\(httpServer.port) · advertised as \(HTTPServer.bonjourName)"
+                         : "Not running")
+                        .foregroundStyle(.secondary)
+                }
+                if let err = httpServer.lastError {
+                    Text(err).foregroundStyle(.red).font(.caption)
+                }
+            }
+
             Section {
                 Button("Refresh Devices") {
                     devices.refresh()
@@ -113,6 +126,6 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 580, height: 540)
+        .frame(width: 580, height: 600)
     }
 }
