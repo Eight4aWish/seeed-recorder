@@ -50,10 +50,16 @@ struct RetrospectiveApp: App {
     }
 
     private var menuBarSymbol: String {
-        switch coordinator.state {
-        case .idle:       return "record.circle"
-        case .extracting: return "square.and.arrow.down.fill"
+        if coordinator.state == .extracting {
+            return "square.and.arrow.down.fill"
         }
+        if !engine.isCapturing {
+            return "record.circle.slash"        // no input selected
+        }
+        if coordinator.lastError != nil {
+            return "exclamationmark.triangle.fill"   // last capture failed; clears on next success
+        }
+        return "record.circle"
     }
 
     private func autoSelectSeeedRecorder() {
