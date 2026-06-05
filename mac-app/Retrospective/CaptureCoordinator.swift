@@ -56,6 +56,10 @@ final class CaptureCoordinator: ObservableObject {
         midi.sendLEDOff()
     }
 
+    private static func appVersion() -> String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
+    }
+
     /// Show a folder-picker and update `outputRoot` if the user chose one.
     /// No security-scoped bookmark is needed — the app isn't sandboxed yet.
     func chooseOutputFolder() {
@@ -79,6 +83,18 @@ final class CaptureCoordinator: ObservableObject {
         }
     }
 
+    /// Public entry-point for non-MIDI trigger paths (menu-bar button, HTTP
+    /// `POST /capture`). Same internal path as a MIDI button press; if a
+    /// capture is already in flight this is a no-op so callers can treat it
+    /// as idempotent. HTTP path translates that to a `503 capture_in_flight`.
+    @discardableResult
+    func triggerCaptureFromExternal(source: String) -> Bool {
+        guard state == .idle else { return false }
+        log.info("External capture trigger: \(source, privacy: .public)")
+        triggerCapture()
+        return true
+    }
+
     private func triggerCapture() {
         guard let scratch = engine.scratchBuffer else {
             lastError = "No active capture; pick an audio input first."
@@ -92,6 +108,7 @@ final class CaptureCoordinator: ObservableObject {
 
         let outputRoot = self.outputRoot
         let stereoPairs = self.stereoPairLefts
+        let appVersion = Self.appVersion()
 
         // Disk-bound work runs off the main actor so the UI stays live.
         Task.detached(priority: .userInitiated) { [weak self] in
@@ -102,7 +119,10 @@ final class CaptureCoordinator: ObservableObject {
                     scratch: scratch,
                     firstPressTime: pressTime,
                     outputRoot: outputRoot,
-                    stereoPairLefts: stereoPairs)
+                    stereoPairLefts: stereoPairs,
+                    bpm: nil,                 // Phase 4 wires Link tempo here
+                    linkPlaying: false,
+                    appVersion: appVersion)
                 errMsg = nil
             } catch {
                 result = nil

@@ -1,27 +1,37 @@
-// Minimal 32-bit float WAV writer (WAVE_FORMAT_IEEE_FLOAT, format=3).
+// Minimal 32-bit float WAV writer (WAVE_FORMAT_IEEE_FLOAT, format=3) with
+// optional LIST-INFO metadata.
 //
 // Logic Pro, Ableton 11+, Pro Tools, and Audacity all read 32-bit float WAVs.
 // We pick this over PCM int24 because:
 //   1. The capture is already Float32 — no quantization on save.
 //   2. Captured signal can briefly exceed 0 dBFS without clipping.
 //
-// Header layout (44 bytes total) for an N-channel float WAV:
-//   "RIFF" | size-8        (8 bytes)
-//   "WAVE"                  (4)
-//   "fmt " | 16             (8)
-//   formatTag=3 | numCh | sampleRate | byteRate | blockAlign | bitsPerSample=32  (16)
-//   "data" | dataSize       (8)
-//   <interleaved float32 samples>
+// File layout for an N-channel float WAV with metadata:
+//   "RIFF" | riffSize | "WAVE"                       (12 bytes)
+//   "fmt " | 16 | formatTag=3 | numCh | sampleRate |
+//      byteRate | blockAlign | bitsPerSample=32      (24 bytes)
+//   "LIST" | listSize | "INFO" | <sub-chunks>        (variable, optional)
+//   "data" | dataSize | <interleaved float32 samples>
 
 import Foundation
 
+struct WAVMetadata: Sendable {
+    /// Wall-clock at trigger time. Encoded as ISO-8601 in the ICRD chunk.
+    let captureTimestamp: Date
+    /// Free-form comment encoded in the ICMT chunk. Per the recorder protocol:
+    /// `BPM=<n>; Link=<playing|stopped>; Source=<id>` (BPM/Link fields omitted
+    /// when no Link tempo is available).
+    let comment: String
+    /// Software identifier encoded in the ISFT chunk, e.g. `seeed-recorder/0.1.0`.
+    let software: String
+}
+
 enum WAVWriter {
-    /// Write an N-channel 32-bit float WAV. `samples` is one Float32 array per channel,
-    /// all the same length. Channels are interleaved into the file in input order.
     static func writeFloat32(
         url: URL,
         sampleRate: Double,
-        channels: [[Float]]
+        channels: [[Float]],
+        metadata: WAVMetadata? = nil
     ) throws {
         precondition(!channels.isEmpty, "Need at least one channel.")
         let numChannels = channels.count
@@ -34,10 +44,15 @@ enum WAVWriter {
         let blockAlign = UInt16(numChannels * bytesPerSample)
         let byteRate   = UInt32(sampleRate) * UInt32(blockAlign)
         let dataBytes  = frameCount * numChannels * bytesPerSample
-        let riffBytes  = 36 + dataBytes        // "WAVE" + fmt chunk (24) + data header (8) = 36
+
+        let listChunk: Data? = metadata.map(buildListInfoChunk)
+        let listBytes = listChunk?.count ?? 0
+
+        // RIFF "size" field excludes the leading "RIFF" + size words (8 bytes).
+        let riffBytes = 4 /*"WAVE"*/ + 24 /*fmt chunk*/ + listBytes + 8 /*data hdr*/ + dataBytes
 
         var header = Data()
-        header.reserveCapacity(44)
+        header.reserveCapacity(12 + 24 + listBytes + 8)
 
         header.appendASCII("RIFF")
         header.append(uint32LE: UInt32(riffBytes))
@@ -51,6 +66,10 @@ enum WAVWriter {
         header.append(uint32LE: byteRate)
         header.append(uint16LE: blockAlign)
         header.append(uint16LE: bitsPerSample)
+
+        if let list = listChunk {
+            header.append(list)
+        }
 
         header.appendASCII("data")
         header.append(uint32LE: UInt32(dataBytes))
@@ -88,6 +107,26 @@ enum WAVWriter {
         }
         return peak
     }
+
+    // MARK: - LIST/INFO
+
+    private static func buildListInfoChunk(_ m: WAVMetadata) -> Data {
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime]
+        let icrd = iso.string(from: m.captureTimestamp)
+
+        var info = Data()
+        info.appendASCII("INFO")
+        info.appendInfoSubChunk("ICMT", m.comment)
+        info.appendInfoSubChunk("ICRD", icrd)
+        info.appendInfoSubChunk("ISFT", m.software)
+
+        var chunk = Data()
+        chunk.appendASCII("LIST")
+        chunk.append(uint32LE: UInt32(info.count))
+        chunk.append(info)
+        return chunk
+    }
 }
 
 private extension Data {
@@ -101,5 +140,19 @@ private extension Data {
     mutating func append(uint32LE v: UInt32) {
         var le = v.littleEndian
         Swift.withUnsafeBytes(of: &le) { append(contentsOf: $0) }
+    }
+    /// LIST/INFO sub-chunk: 4-byte ASCII id, 4-byte LE size, null-terminated
+    /// payload, padded to an even byte count.
+    mutating func appendInfoSubChunk(_ id: String, _ value: String) {
+        precondition(id.count == 4)
+        var payload = Array(value.utf8)
+        payload.append(0)   // null terminator
+        let dataSize = payload.count
+        appendASCII(id)
+        append(uint32LE: UInt32(dataSize))
+        append(contentsOf: payload)
+        if dataSize % 2 != 0 {
+            append(0)       // pad to word boundary
+        }
     }
 }

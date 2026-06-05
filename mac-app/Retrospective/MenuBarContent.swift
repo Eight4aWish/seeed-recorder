@@ -31,6 +31,14 @@ struct MenuBarContent: View {
 
         Divider()
 
+        Button("Capture Now") {
+            coordinator.triggerCaptureFromExternal(source: "menu-bar")
+        }
+        .keyboardShortcut("c")
+        .disabled(!engine.isCapturing || coordinator.state != .idle)
+
+        Divider()
+
         SettingsLink {
             Text("Settings…")
         }

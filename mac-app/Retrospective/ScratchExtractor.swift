@@ -34,11 +34,20 @@ enum ScratchExtractor {
 
     /// - Parameter stereoPairLefts: 0-indexed left channels; each forms a stereo
     ///   unit with the channel immediately after it.
+    /// - Parameter bpm: Current Ableton Link tempo, if joined. Drives the
+    ///   `_<bpm>bpm_` filename segment and the BPM field in the WAV metadata.
+    ///   Pass `nil` when no Link peer is present.
+    /// - Parameter linkPlaying: Link transport state. Only meaningful when
+    ///   `bpm != nil`.
+    /// - Parameter appVersion: Used in the WAV ISFT chunk.
     static func extract(
         scratch: ScratchBuffer,
         firstPressTime: Date,
         outputRoot: URL,
-        stereoPairLefts: Set<Int>
+        stereoPairLefts: Set<Int>,
+        bpm: Double? = nil,
+        linkPlaying: Bool = false,
+        appVersion: String = "0.0.0"
     ) throws -> ExtractionResult {
         let format = scratch.format
         let framesPerFile = format.framesPerFile
@@ -53,10 +62,15 @@ enum ScratchExtractor {
         let writeOffsetFrames = Int(scratch.snapshotWriteOffset()) % framesPerFile
         let firstChunkFrames  = framesPerFile - writeOffsetFrames
         let secondChunkFrames = writeOffsetFrames
-        let stamp = filenameTimestamp(firstPressTime)
+        let stem = filenameStem(timestamp: firstPressTime, bpm: bpm)
         let nch = format.channelCount
         let sampleRate = format.sampleRate
         let scratchDir = scratch.directory
+        let metadata = buildMetadata(
+            timestamp: firstPressTime,
+            bpm: bpm,
+            linkPlaying: linkPlaying,
+            appVersion: appVersion)
 
         // Group channels into mono / stereo output units.
         var units: [[Int]] = []
@@ -89,7 +103,8 @@ enum ScratchExtractor {
                     firstChunkFrames: firstChunkFrames,
                     secondChunkFrames: secondChunkFrames,
                     sampleRate: sampleRate,
-                    timestamp: stamp,
+                    filenameStem: stem,
+                    metadata: metadata,
                     outputRoot: outputRoot)
             }
         }
@@ -135,7 +150,8 @@ enum ScratchExtractor {
         firstChunkFrames: Int,
         secondChunkFrames: Int,
         sampleRate: Double,
-        timestamp: String,
+        filenameStem: String,
+        metadata: WAVMetadata,
         outputRoot: URL
     ) -> UnitResult {
         do {
@@ -167,8 +183,12 @@ enum ScratchExtractor {
             } else {
                 suffix = String(format: "ch%02d", channels[0] + 1)
             }
-            let outURL = outputRoot.appendingPathComponent("\(timestamp)_\(suffix).wav")
-            try WAVWriter.writeFloat32(url: outURL, sampleRate: sampleRate, channels: perChannelSamples)
+            let outURL = outputRoot.appendingPathComponent("\(filenameStem)_\(suffix).wav")
+            try WAVWriter.writeFloat32(
+                url: outURL,
+                sampleRate: sampleRate,
+                channels: perChannelSamples,
+                metadata: metadata)
             return UnitResult(channels: channels, peakDBFS: peakDB, fileURL: outURL, errorMessage: nil)
         } catch {
             return UnitResult(channels: channels, peakDBFS: -.infinity, fileURL: nil,
@@ -227,10 +247,34 @@ enum ScratchExtractor {
         }
     }
 
-    private static func filenameTimestamp(_ date: Date) -> String {
+    /// Build the leading filename segment up to (but not including) the
+    /// `_chNN[-MM].wav` portion. Includes the BPM segment when Link is active.
+    private static func filenameStem(timestamp: Date, bpm: Double?) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
-        return formatter.string(from: date)
+        let timeStr = formatter.string(from: timestamp)
+        if let bpm, bpm > 0 {
+            return "\(timeStr)_\(Int(bpm.rounded()))bpm"
+        }
+        return timeStr
+    }
+
+    private static func buildMetadata(
+        timestamp: Date,
+        bpm: Double?,
+        linkPlaying: Bool,
+        appVersion: String
+    ) -> WAVMetadata {
+        var parts: [String] = []
+        if let bpm, bpm > 0 {
+            parts.append("BPM=\(Int(bpm.rounded()))")
+            parts.append("Link=\(linkPlaying ? "playing" : "stopped")")
+        }
+        parts.append("Source=seeed-recorder")
+        return WAVMetadata(
+            captureTimestamp: timestamp,
+            comment: parts.joined(separator: "; "),
+            software: "seeed-recorder/\(appVersion)")
     }
 }
