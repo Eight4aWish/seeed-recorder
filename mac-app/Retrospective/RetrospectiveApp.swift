@@ -54,7 +54,7 @@ struct RetrospectiveApp: App {
             return "square.and.arrow.down.fill"
         }
         if !engine.isCapturing {
-            return "record.circle.slash"        // no input selected
+            return "waveform.slash"              // no input selected
         }
         if coordinator.lastError != nil {
             return "exclamationmark.triangle.fill"   // last capture failed; clears on next success
