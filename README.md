@@ -83,7 +83,7 @@ mac-app/
   Makefile                 release / install / icon helpers
   scripts/
     generate-icon.swift    AppIcon generator
-    icon-source.jpg        eight4awish magpie logo (used as icon source)
+    icon-source.jpg        eight4awish logo (used as icon source)
   Retrospective/           Swift sources, entitlements, asset catalog
 hardware/                   panel design, schematic (TBD)
 docs/                       design notes

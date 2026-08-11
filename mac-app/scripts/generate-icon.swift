@@ -4,7 +4,7 @@
 //     swift scripts/generate-icon.swift
 // (or `make icon`).
 //
-// Source artwork: scripts/icon-source.jpg (the eight4awish magpie logo).
+// Source artwork: scripts/icon-source.jpg (the eight4awish logo).
 // Composition: cream squircle background with the bird cropped square and
 // padded inside, plus a small red record dot in the corner to telegraph
 // "audio recorder".
@@ -29,7 +29,7 @@ guard let sourceData = try? Data(contentsOf: sourceURL),
     exit(1)
 }
 
-// Crop tight to the magpie, dropping the "eight4awish" wordmark to the right.
+// Crop tight to the bird, dropping the "eight4awish" wordmark to the right.
 // Source image is 1868×1243; the bird occupies roughly the left third.
 // We keep the natural aspect (bird is taller than wide) and centre it inside
 // the icon canvas with padding.
