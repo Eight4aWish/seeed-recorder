@@ -6,6 +6,7 @@ struct MenuBarContent: View {
     @EnvironmentObject var engine: AudioCaptureEngine
     @EnvironmentObject var midi: MIDIController
     @EnvironmentObject var coordinator: CaptureCoordinator
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         Text("Retrospective")
@@ -36,6 +37,14 @@ struct MenuBarContent: View {
         }
         .keyboardShortcut("c")
         .disabled(!engine.isCapturing || coordinator.state != .idle)
+
+        Button("Review Captures…") {
+            // LSUIElement apps have no Dock presence, so the window would open
+            // behind whatever is frontmost without an explicit activate.
+            NSApp.activate(ignoringOtherApps: true)
+            openWindow(id: RetrospectiveApp.reviewWindowID)
+        }
+        .keyboardShortcut("l")
 
         Divider()
 

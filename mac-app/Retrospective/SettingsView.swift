@@ -7,6 +7,13 @@ struct SettingsView: View {
     @EnvironmentObject var coordinator: CaptureCoordinator
     @EnvironmentObject var httpServer: HTTPServer
 
+    // Shared with the review window through UserDefaults — see JunkThresholds.
+    @AppStorage(JunkThresholds.activeSecondsKey) private var maxActiveSeconds = JunkThresholds.default.maxActiveSeconds
+    @AppStorage(JunkThresholds.eventCountKey) private var maxEventCount = JunkThresholds.default.maxEventCount
+    @AppStorage(JunkThresholds.crestKey) private var minCrestDB = Double(JunkThresholds.default.minCrestDB)
+    @AppStorage(JunkThresholds.noiseFloorKey) private var maxNoiseFloorDBFS = Double(JunkThresholds.default.maxNoiseFloorDBFS)
+    @AppStorage(SessionLibrary.groupGapKey) private var groupGapMinutes = 30.0
+
     private var lookbackMinutes: Binding<Double> {
         Binding(
             get: { engine.lookbackSeconds / 60 },
@@ -116,6 +123,78 @@ struct SettingsView: View {
                 }
                 if let err = httpServer.lastError {
                     Text(err).foregroundStyle(.red).font(.caption)
+                }
+            }
+
+            Section("Review · Grouping") {
+                LabeledContent("New session after") {
+                    HStack {
+                        Slider(value: $groupGapMinutes, in: 5...240, step: 5)
+                        Text(groupGapMinutes >= 60
+                             ? String(format: "%.1f h", groupGapMinutes / 60)
+                             : String(format: "%.0f min", groupGapMinutes))
+                            .monospacedDigit()
+                            .frame(width: 60, alignment: .trailing)
+                    }
+                }
+                Text("Captures further apart than this are shown as separate sessions. In this library, gaps within a sitting topped out at 20 minutes and the next gap up was 53, so 30 minutes separates them cleanly.")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+
+            Section("Review · Junk Detection") {
+                Text("A channel is flagged when it carries almost no signal but a loud peak — stray clicks from a half-seated patch cable rather than a take. Flagging never deletes anything.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                LabeledContent("Max live time") {
+                    HStack {
+                        Slider(value: $maxActiveSeconds, in: 0.05...5, step: 0.05)
+                        Text("\(maxActiveSeconds, specifier: "%.2f") s")
+                            .monospacedDigit()
+                            .frame(width: 60, alignment: .trailing)
+                    }
+                }
+                Text("Measured across this library, stray clicks totalled at most 0.02 s of signal while the shortest real take ran 2.56 s. Anything between the two is safe.")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+
+                LabeledContent("Min crest") {
+                    HStack {
+                        Slider(value: $minCrestDB, in: 10...50, step: 1)
+                        Text("\(minCrestDB, specifier: "%.0f") dB")
+                            .monospacedDigit()
+                            .frame(width: 60, alignment: .trailing)
+                    }
+                }
+
+                LabeledContent("Max events") {
+                    HStack {
+                        Slider(
+                            value: Binding(
+                                get: { Double(maxEventCount) },
+                                set: { maxEventCount = Int($0) }),
+                            in: 1...64, step: 1)
+                        Text("\(maxEventCount)")
+                            .monospacedDigit()
+                            .frame(width: 60, alignment: .trailing)
+                    }
+                }
+
+                LabeledContent("Max floor") {
+                    HStack {
+                        Slider(value: $maxNoiseFloorDBFS, in: -96...(-30), step: 1)
+                        Text("\(maxNoiseFloorDBFS, specifier: "%.0f") dBFS")
+                            .monospacedDigit()
+                            .frame(width: 60, alignment: .trailing)
+                    }
+                }
+
+                Button("Restore Defaults") {
+                    maxActiveSeconds = JunkThresholds.default.maxActiveSeconds
+                    minCrestDB = Double(JunkThresholds.default.minCrestDB)
+                    maxEventCount = JunkThresholds.default.maxEventCount
+                    maxNoiseFloorDBFS = Double(JunkThresholds.default.maxNoiseFloorDBFS)
                 }
             }
 

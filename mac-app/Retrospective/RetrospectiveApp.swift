@@ -1,8 +1,10 @@
-// Menu-bar-only SwiftUI app. Two scenes:
+// Menu-bar-only SwiftUI app. Three scenes:
 //   MenuBarExtra — the status-bar icon + its click menu
 //   Settings     — a standard Settings window (⌘,)
+//   Review       — audition / cleanup window, opened from the menu
 //
-// No Dock icon: Info.plist sets LSUIElement = true.
+// No Dock icon: Info.plist sets LSUIElement = true. That means opening the
+// Review window needs an explicit NSApp.activate — see MenuBarContent.
 
 import SwiftUI
 
@@ -47,7 +49,16 @@ struct RetrospectiveApp: App {
                 .environmentObject(coordinator)
                 .environmentObject(httpServer)
         }
+
+        Window("Review", id: Self.reviewWindowID) {
+            ReviewWindow()
+                .environmentObject(devices)
+                .environmentObject(coordinator)
+        }
+        .defaultSize(width: 1040, height: 640)
     }
+
+    static let reviewWindowID = "review"
 
     private var menuBarSymbol: String {
         if coordinator.state == .extracting {
