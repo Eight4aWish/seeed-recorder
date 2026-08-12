@@ -121,6 +121,16 @@ final class CaptureCoordinator: ObservableObject {
             }.value
 
             lastResult = result
+            // Hand the just-computed analysis to the cache so the review window
+            // opens on this capture without re-reading the files.
+            let freshStats = result.stats
+            Task.detached(priority: .utility) {
+                for (url, stats) in freshStats {
+                    await AnalysisCache.shared.store(stats, for: url)
+                }
+                await AnalysisCache.shared.save()
+            }
+
             if let first = result.channelErrors.first {
                 lastError = "ch\(first.channel + 1): \(first.message)"
                 midi.sendLEDError()

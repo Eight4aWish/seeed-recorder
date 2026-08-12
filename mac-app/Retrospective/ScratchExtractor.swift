@@ -3,10 +3,14 @@
 //   2. Snapshot the current circular write offset (oldest-frame position).
 //   3. Group channels into output units — a marked stereo pair becomes one
 //      2-channel WAV; everything else is a mono WAV.
-//   4. For each unit in parallel: read its channel(s) chronologically, compute
-//      peak, write a WAV if peak ≥ silence threshold.
+//   4. For each unit in parallel: read its channel(s) chronologically, analyse
+//      them, write a WAV if peak ≥ silence threshold.
 //   5. Log peak dBFS for every unit (saved or skipped).
 //   6. Resume the writer.
+//
+// The analysis in step 4 is the same `SignalAnalyzer` the review window uses.
+// Running it here — where the samples are already in RAM — means a fresh capture
+// can be auditioned without re-reading anything from disk.
 
 import Foundation
 import OSLog
@@ -18,13 +22,18 @@ struct ExtractionResult {
     let writtenFiles: [URL]
     let skippedSilentChannels: [Int]
     let channelErrors: [(channel: Int, message: String)]
+    /// Analysis for each written file. The samples are already in RAM here, so
+    /// computing it now is nearly free and saves the review window a re-read.
+    let stats: [URL: SignalStats]
 }
 
 private struct UnitResult {
     let channels: [Int]
-    let peakDBFS: Float
+    let stats: SignalStats?
     let fileURL: URL?
     let errorMessage: String?
+
+    var peakDBFS: Float { stats?.peakDBFS ?? -.infinity }
 }
 
 enum ScratchExtractor {
@@ -88,7 +97,7 @@ enum ScratchExtractor {
         let started = Date()
 
         var results = [UnitResult](
-            repeating: UnitResult(channels: [], peakDBFS: -.infinity, fileURL: nil, errorMessage: nil),
+            repeating: UnitResult(channels: [], stats: nil, fileURL: nil, errorMessage: nil),
             count: units.count)
 
         results.withUnsafeMutableBufferPointer { buf in
@@ -112,6 +121,7 @@ enum ScratchExtractor {
         var written: [URL] = []
         var skipped: [Int] = []
         var errors: [(channel: Int, message: String)] = []
+        var stats: [URL: SignalStats] = [:]
 
         for r in results {
             let label = r.channels.map { String($0 + 1) }.joined(separator: "+")
@@ -123,6 +133,7 @@ enum ScratchExtractor {
             } else if let url = r.fileURL {
                 log.info("ch\(label, privacy: .public): \(dbStr, privacy: .public) → saved")
                 written.append(url)
+                if let s = r.stats { stats[url] = s }
             } else {
                 log.info("ch\(label, privacy: .public): \(dbStr, privacy: .public) → skipped")
                 skipped.append(contentsOf: r.channels)
@@ -136,7 +147,8 @@ enum ScratchExtractor {
             outputDirectory: outputRoot,
             writtenFiles: written,
             skippedSilentChannels: skipped,
-            channelErrors: errors)
+            channelErrors: errors,
+            stats: stats)
     }
 
     // MARK: - Per-unit work (runs on a concurrentPerform thread)
@@ -156,6 +168,7 @@ enum ScratchExtractor {
     ) -> UnitResult {
         do {
             var perChannelSamples: [[Float]] = []
+            var perChannelStats: [SignalStats] = []
             var unitPeak: Float = 0
             for ch in channels {
                 let scratchFile = scratchDir.appendingPathComponent(String(format: "ch%02d.pcm", ch))
@@ -166,15 +179,19 @@ enum ScratchExtractor {
                     bytesPerSample: bytesPerSample,
                     firstChunkFrames: firstChunkFrames,
                     secondChunkFrames: secondChunkFrames)
-                unitPeak = max(unitPeak, WAVWriter.peakAmplitude(samples))
+                // One walk yields the peak the silence gate needs plus everything
+                // the review window would otherwise have to re-read the file for.
+                let stats = SignalAnalyzer.analyze(samples, sampleRate: sampleRate)
+                perChannelStats.append(stats)
+                unitPeak = max(unitPeak, stats.peak)
                 perChannelSamples.append(samples)
             }
 
-            let peakDB: Float = unitPeak > 0 ? 20 * log10f(unitPeak) : -.infinity
+            let unitStats = SignalStats.merge(perChannelStats)
 
             // Keep the whole unit if any channel in it has signal.
             guard unitPeak >= silenceThresholdLinear else {
-                return UnitResult(channels: channels, peakDBFS: peakDB, fileURL: nil, errorMessage: nil)
+                return UnitResult(channels: channels, stats: unitStats, fileURL: nil, errorMessage: nil)
             }
 
             let suffix: String
@@ -189,9 +206,9 @@ enum ScratchExtractor {
                 sampleRate: sampleRate,
                 channels: perChannelSamples,
                 metadata: metadata)
-            return UnitResult(channels: channels, peakDBFS: peakDB, fileURL: outURL, errorMessage: nil)
+            return UnitResult(channels: channels, stats: unitStats, fileURL: outURL, errorMessage: nil)
         } catch {
-            return UnitResult(channels: channels, peakDBFS: -.infinity, fileURL: nil,
+            return UnitResult(channels: channels, stats: nil, fileURL: nil,
                               errorMessage: error.localizedDescription)
         }
     }
