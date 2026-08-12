@@ -43,3 +43,27 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         CODE_SIGN_ENTITLEMENTS: Retrospective/Retrospective.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+
+  RetrospectiveTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: RetrospectiveTests
+    dependencies:
+      - target: Retrospective
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.n8synth.retrospective.tests
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  Retrospective:
+    build:
+      targets:
+        Retrospective: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - RetrospectiveTests
