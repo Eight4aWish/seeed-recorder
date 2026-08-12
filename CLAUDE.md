@@ -91,15 +91,50 @@ information is omitted from captures.
   Stereo R` per-channel role table from the original spec is deferred — the
   lightweight model serves the current use cases.)
 - Filename format:
-  `YYYY-MM-DD_HH-MM-SS[_<bpm>bpm]_ch<NN>[-<NN>].wav`
-  - Timestamp = wall-clock at trigger time
+  `YYYY-MM-DD_HH-MM-SS[_<bpm>bpm][_<name>][_t<take>]_ch<NN>[-<NN>].wav`
+  - Timestamp = wall-clock at trigger time. **This is the session identity** —
+    grouping in the review window keys off it, so it must survive retagging.
   - `<bpm>` segment included only when Link is active; rounded to nearest integer
+  - `<name>` / `t<take>` added by the review window's tag editor. The name is
+    sanitised (spaces and `_` become `-`, capped at 60 chars so the filename
+    stays under the macOS 255-byte limit); the untruncated name still goes to
+    iXML.
   - `ch<NN>` for mono channels, `ch<NN>-<MM>` for stereo pairs
 - Ableton can't read multichannel WAVs — stereo pairs emit one
   interleaved stereo file; monos stay separate.
-- WAV metadata: BPM, Link play state, and capture timestamp are
-  written into the LIST-INFO chunk (`ICMT`, `ICRD`, `ISFT`) so the
-  tempo survives a rename.
+- WAV metadata, chunk order `fmt ` → `bext` → `iXML` → `LIST` → `data`:
+  - **`bext`** (BWF, EBU Tech 3285, fixed 602-byte Version 1 struct) —
+    Description, Originator, OriginationDate/Time. `TimeReference` is
+    deliberately **0**, so every file from one press shares a timecode and
+    auto-aligns in Resolve without captures scattering over a 24-hour timeline.
+  - **`iXML`** — `PROJECT`, `SCENE` (session name), `TAKE`, `NOTE`, `CIRCLED`
+    (good take), `TAPE`. Resolve 20.2+ surfaces these in the Metadata panel and
+    makes them searchable in the Media Pool.
+  - **`LIST-INFO`** (`ICMT`, `ICRD`, `ISFT`) — retained for backward
+    compatibility with captures written before tagging existed.
+
+## Review window
+
+Opened from the menu bar (⌘L). Reads the flat output folder; no separate
+database — the files are the source of truth, with a derived analysis cache at
+`~/Library/Application Support/Retrospective/analysis-cache.plist`.
+
+- **Grouping.** One press is a `CaptureSession`; a run of presses closer together
+  than 30 minutes is a `CaptureGroup` — a sitting. The threshold is measured, not
+  guessed: in the real library, gaps within a sitting topped out at 20.4 min and
+  the next gap up was 52.9 min.
+- **Audition.** All of a capture's channels play sample-locked from one shared
+  `AVAudioTime`. Mute sets `volume = 0` and never stops a node; pause and seek
+  stop everything and reschedule together. Streams from disk.
+- **Junk detection.** Flags channels carrying stray clicks rather than a take.
+  The gate is *absolute active time* (default 0.25 s), not a fraction of the
+  capture — a fraction would scale with the lookback setting and would flag a
+  short real take in a long window. Flagging never deletes; deletions go to the
+  Trash.
+- **Combine.** Two monos → one interleaved stereo, lower channel number left.
+- **Tagging.** Session-level name / take / note / good-take, written to every
+  file in the capture by an atomic rewrite (`replaceItemAt`), audio copied
+  byte-for-byte.
 
 ## Hardware wiring (Seeed Xiao RP2040)
 
@@ -129,7 +164,8 @@ repo (`docs/ESP32_CLKLINKREC.md`).
 5. **HTTP server + mDNS advertisement** (for the C5 trigger path). Same capture engine, new entry point.
 6. **Ableton Link follower participation** for BPM-aware captures.
 7. **Menu-bar manual trigger** for testing.
-8. Polish: reconnect handling, code signing, app icon.
+8. **Review window**: audition, junk flagging, stereo combine, Resolve tagging.
+9. Polish: reconnect handling, code signing, app icon.
 
 ## Conventions
 

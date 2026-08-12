@@ -152,6 +152,59 @@ For each output unit (mono channel, or stereo pair if marked):
 - WAV metadata: write BPM + Link play state + capture timestamp into the
   LIST-INFO chunk (`ICMT`, `ICRD`, `ISFT`) so tempo survives a rename.
 
+#### Review window
+
+Between capture and edit. Opened from the menu bar; reads the flat output
+folder directly, so it works on captures made before it existed.
+
+- **Sittings.** Captures within 30 minutes of each other are shown as one
+  session. The threshold was measured against the real library rather than
+  chosen: gaps inside a sitting reached 20.4 min, the next gap up was 52.9 min.
+  Adjustable in Settings.
+- **Audition.** One `AVAudioPlayerNode` per file into a shared mixer, all
+  started at one `AVAudioTime`. Mute is `volume = 0` — stopping a node would
+  desync it. Pause and seek stop every node and reschedule together. Playback
+  streams via `scheduleSegment`; buffering 16 channels of a 30-minute capture
+  would need ~5.5 GB. Per-track level, solo, loop region, output-device picker,
+  master gain, and transient stepping for sparse channels.
+- **Junk detection.** A single analysis pass yields peak, RMS, crest, DC offset,
+  a windowed activity profile and a waveform envelope. A channel is flagged when
+  it has almost no signal but a loud peak. The decisive metric is **absolute
+  active time**, not activity as a fraction of the capture: a fraction scales
+  with the lookback setting, and would have flagged a genuine 7.6 s take sitting
+  in a 120 s window. Measured separation on the real library: 0.020 s of
+  activity among flagged files against 2.56 s for the shortest kept one.
+  Sustained audio registers as a *single* event, so event count only
+  discriminates for intermittent material and serves as a secondary guard.
+- **Cleanup.** Flagged files are pre-ticked but never acted on automatically;
+  deletion is `trashItem`, so a misjudged call is recoverable from Finder.
+- **Combine.** Two monos into one interleaved stereo, streamed rather than
+  buffered, lower channel number to the left, originals to the Trash.
+- **Tagging.** See "Metadata for DaVinci Resolve" below.
+
+Analysis is computed during extraction, where the samples are already in RAM,
+and cached by path + mtime + size — so a fresh capture opens instantly and a
+retag (which rewrites the file) invalidates its entry automatically.
+
+#### Metadata for DaVinci Resolve
+
+Resolve reads two chunks beyond `LIST-INFO`, both written before `data`:
+
+- **`bext`** — BWF, EBU Tech 3285. Fixed 602-byte Version 1 struct (Version 2
+  would require 0x7FFF sentinels for the loudness fields we do not measure).
+  Description carries a readable session line; OriginationDate/Time carry local
+  wall clock. `TimeReference` is held at **0** so a capture's channels share a
+  timecode and align to each other under *Auto Sync by Timecode*, without
+  captures spreading across a 24-hour timeline.
+- **`iXML`** — `SCENE`, `TAKE`, `NOTE`, `CIRCLED`, `PROJECT`, `TAPE`. Resolve
+  20.2+ reads these actively and makes them searchable in the Media Pool.
+
+Tagging happens after extraction, so it rewrites existing files: build a fresh
+header, stream the untouched `data` payload after it, swap atomically with
+`replaceItemAt`, then rename. The swap-before-rename order means a failed rename
+still leaves a correctly tagged file. Audio is copied byte-for-byte and never
+re-encoded, so repeated tagging is lossless.
+
 #### Settings UI
 
 - Audio input picker (CoreAudio devices, persisted by stable device UID).
@@ -190,6 +243,9 @@ For each output unit (mono channel, or stereo pair if marked):
 - CV/gate input on the C5 module (trigger saves from a patch).
 - Gate output (recording-state signal for routing).
 - Multiple buttons for tagged takes (good / idea / weird).
+- Per-channel names in the review window (iXML `TRACK_LIST`), so a 16-channel
+  capture reads as "Kick / Bass / 303" in Resolve rather than by channel number.
+- Group-level tagging — applying a name to a whole sitting at once.
 - Capture by bar/beat boundary instead of fixed seconds, using the Link beat clock.
 - Handling of sample-rate changes mid-session.
 - Optional shared-secret HMAC on the HTTP path for untrusted LANs.
