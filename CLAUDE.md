@@ -175,7 +175,7 @@ repo (`docs/ESP32_CLKLINKREC.md`).
 
 ## Module inventory
 
-This repo holds one module (the RP2040 trigger) and the Mac app, but it is one of nine
+This repo holds one module (the RP2040 trigger) and the Mac app, but it is one of ten
 repos. For the full picture — every module across all of them, the purchased rack, and
 what is deliberately not a module — read the canonical inventory:
 
