@@ -172,3 +172,12 @@ repo (`docs/ESP32_CLKLINKREC.md`).
 - Small commits on `main` for now (solo project, no PR overhead).
 - No secrets in repo. No generated build artifacts committed.
 - User (n8synth builder) is experienced with analog Eurorack and comfortable with Arduino; less familiar with macOS app development — explain Swift/CoreAudio choices more fully than firmware choices.
+
+## Module inventory
+
+This repo holds one module (the RP2040 trigger) and the Mac app, but it is one of nine
+repos. For the full picture — every module across all of them, the purchased rack, and
+what is deliberately not a module — read the canonical inventory:
+
+**`MODULES.md`** in the [`eight4awish`](https://github.com/Eight4aWish/eight4awish) repo
+— <https://github.com/Eight4aWish/eight4awish/blob/main/MODULES.md>
