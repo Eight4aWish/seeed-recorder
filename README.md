@@ -27,10 +27,10 @@ Filenames: `YYYY-MM-DD_HH-MM-SS[_<bpm>bpm]_ch<NN>[-<NN>].wav`. The BPM segment i
 ## Components
 
 - **`firmware/`** — Arduino sketch for the Seeed Xiao RP2040 (button → MIDI Note On, MIDI Note On → LED). Built with the arduino-pico core and Adafruit TinyUSB.
-- **`mac-app/`** — SwiftUI `MenuBarExtra` app. CoreAudio capture, scratch buffer, CoreMIDI client, HTTP/mDNS server, Link follower, manual menu-bar trigger, settings persistence.
+- **`mac-app/`** — SwiftUI `MenuBarExtra` app. CoreAudio capture, scratch buffer, CoreMIDI client, HTTP/mDNS server, Link follower, manual menu-bar trigger, settings persistence, and a review window for auditioning takes and tagging them with metadata for DaVinci Resolve.
 - **`docs/`** — design notes.
 
-The Xiao ESP32-C5 module's firmware (the HTTP/mDNS trigger path) lives in the sibling [`eurorack_modules`](https://github.com/Eight4aWish/eurorack_modules) repo as `esp32-clklinkrec`. The HTTP wire contract is documented at [`eurorack_modules/docs/RECORDER_PROTOCOL.md`](https://github.com/Eight4aWish/eurorack_modules/blob/main/docs/RECORDER_PROTOCOL.md).
+The Xiao ESP32-C5 module's firmware (the HTTP/mDNS trigger path) lives in the sibling [`eurorack_modules`](https://github.com/Eight4aWish/eurorack_modules) repo as `esp32_clklinkrec`. The HTTP wire contract is documented at [`eurorack_modules/docs/RECORDER_PROTOCOL.md`](https://github.com/Eight4aWish/eurorack_modules/blob/main/docs/RECORDER_PROTOCOL.md).
 
 ## Hardware (RP2040 module)
 
@@ -85,7 +85,6 @@ mac-app/
     generate-icon.swift    AppIcon generator
     icon-source.jpg        eight4awish logo (used as icon source)
   Retrospective/           Swift sources, entitlements, asset catalog
-hardware/                   panel design, schematic (TBD)
 docs/                       design notes
 ```
 
